@@ -1,8 +1,8 @@
 .PHONY: help install test lint format run clean
 
-PYTEST := poetry run pytest
-UVICORN := poetry run uvicorn
-RUFF := poetry run ruff
+PYTEST := poetry -C backend run pytest
+UVICORN := poetry -C backend run uvicorn
+RUFF := poetry -C backend run ruff
 
 help:
 	@echo "Comandos disponíveis:"
@@ -14,7 +14,7 @@ help:
 	@echo "  make clean    - remove arquivos temporários"
 
 install:
-	poetry install
+	poetry -C backend install
 
 test:
 	$(PYTEST)
