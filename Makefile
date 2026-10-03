@@ -21,10 +21,10 @@ help:
 	@echo "  make clean     - remove containers e volumes"
 
 install:
-	poetry -C backend install
+	poetry -C backend install --no-root
 
 test:
-	$(PYTEST)
+	$(PYTEST) -v
 
 lint:
 	$(RUFF) check .
