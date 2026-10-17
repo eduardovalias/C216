@@ -9,6 +9,9 @@ jobs:
     name: Run backend tests
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: "sqlite+pysqlite:///ci.db"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,5 +27,8 @@ jobs:
       - name: Install dependencies
         run: poetry -C backend install --no-root
 
-      - name: Run Pytest
-        run: poetry -C backend run pytest -v
+      - name: Run tests
+        run: make test
+
+      - name: Run lint
+        run: make lint

@@ -24,7 +24,7 @@ install:
 	poetry -C backend install --no-root
 
 test:
-	$(PYTEST) -v
+	$(PYTEST) -v --tb=short --basetemp=.pytest-temp
 
 lint:
 	$(RUFF) check .
