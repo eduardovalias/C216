@@ -1,76 +1,46 @@
+from app.models.item import Item
+from app.repositories.item import ItemRepository
 from app.schemas.item import ItemCreate, ItemUpdate
 
-items = []
-next_id = 1
 
+class ItemService:
+    def __init__(self, repository: ItemRepository):
+        self.repository = repository
 
-def list_items(name: str | None = None):
-    if name:
-        return [
-            item
-            for item in items
-            if name.lower() in item["name"].lower()
-        ]
+    def list_items(self, name: str | None = None) -> list[Item]:
+        return self.repository.list_items(name)
 
-    return items
+    def get_item(self, item_id: int) -> Item | None:
+        return self.repository.get_item(item_id)
 
+    def create_item(self, data: ItemCreate) -> Item:
+        return self.repository.create_item(
+            name=data.name,
+            description=data.description,
+        )
 
-def get_item(item_id: int):
-    for item in items:
-        if item["id"] == item_id:
-            return item
+    def replace_item(self, item_id: int, data: ItemCreate) -> Item | None:
+        item = self.repository.get_item(item_id)
 
-    return None
+        if item is None:
+            return None
 
+        return self.repository.update_item(item, data.model_dump())
 
-def create_item(data: ItemCreate):
-    global next_id
+    def update_item(self, item_id: int, data: ItemUpdate) -> Item | None:
+        item = self.repository.get_item(item_id)
 
-    item = {
-        "id": next_id,
-        "name": data.name,
-        "description": data.description,
-    }
+        if item is None:
+            return None
 
-    items.append(item)
-    next_id += 1
+        changes = data.model_dump(exclude_unset=True)
+        return self.repository.update_item(item, changes)
 
-    return item
+    def delete_item(self, item_id: int) -> bool:
+        item = self.repository.get_item(item_id)
 
+        if item is None:
+            return False
 
-def replace_item(item_id: int, data: ItemCreate):
-    item = get_item(item_id)
-
-    if item is None:
-        return None
-
-    item["name"] = data.name
-    item["description"] = data.description
-
-    return item
-
-
-def update_item(item_id: int, data: ItemUpdate):
-    item = get_item(item_id)
-
-    if item is None:
-        return None
-
-    if data.name is not None:
-        item["name"] = data.name
-
-    if data.description is not None:
-        item["description"] = data.description
-
-    return item
-
-
-def delete_item(item_id: int):
-    item = get_item(item_id)
-
-    if item is None:
-        return False
-
-    items.remove(item)
-
-    return True
+        self.repository.delete_item(item)
+        return True
