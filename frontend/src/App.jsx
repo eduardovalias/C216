@@ -1,6 +1,7 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import ItemForm from "./components/ItemForm.jsx";
 import ItemList from "./components/ItemList.jsx";
+import { createItem, deleteItem, listItems, updateItem } from "./services/items.js";
 import { filterItems } from "./utils/items.js";
 
 function StatCard({ label, value, symbol }) {
@@ -22,42 +23,88 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [feedback, setFeedback] = useState("");
-  const nextId = useRef(1);
+  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const formHeadingId = useId();
   const listHeadingId = useId();
   const searchId = useId();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reloadVersion is intentionally used as a retry trigger to reload the API data.
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    setLoadError(false);
+    listItems()
+      .then((data) => {
+        if (active) setItems(data);
+      })
+      .catch((reason) => {
+        if (active) {
+          setError(reason.message);
+          setLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadVersion]);
+
   const editingItem = items.find((item) => item.id === editingId) ?? null;
   const visibleItems = filterItems(items, query);
-  const describedCount = items.filter((item) => item.description.length > 0).length;
+  const describedCount = items.filter((item) => Boolean(item.description?.length)).length;
 
-  function handleSave(values) {
-    if (editingId !== null) {
-      setItems((current) =>
-        current.map((item) => (item.id === editingId ? { ...item, ...values } : item)),
-      );
-      setEditingId(null);
-      setFeedback("Item atualizado com sucesso.");
-      return;
+  async function handleSave(values) {
+    setSaving(true);
+    setError("");
+    setFeedback("");
+    try {
+      if (editingId !== null) {
+        const updated = await updateItem(editingId, values);
+        setItems((current) => current.map((item) => (item.id === editingId ? updated : item)));
+        setEditingId(null);
+        setFeedback("Item atualizado com sucesso.");
+      } else {
+        const created = await createItem(values);
+        setItems((current) => [created, ...current]);
+        setFeedback("Item criado com sucesso.");
+      }
+      return true;
+    } catch (reason) {
+      setError(reason.message);
+      return false;
+    } finally {
+      setSaving(false);
     }
-
-    const item = { id: nextId.current, ...values };
-    nextId.current += 1;
-    setItems((current) => [item, ...current]);
-    setFeedback("Item criado com sucesso.");
   }
 
   function handleEdit(itemId) {
     setEditingId(itemId);
     setFeedback("");
+    setError("");
   }
 
-  function handleDelete(itemId) {
-    setItems((current) => current.filter((item) => item.id !== itemId));
-    if (editingId === itemId) {
-      setEditingId(null);
+  async function handleDelete(itemId) {
+    setDeletingId(itemId);
+    setError("");
+    setFeedback("");
+    try {
+      await deleteItem(itemId);
+      setItems((current) => current.filter((item) => item.id !== itemId));
+      if (editingId === itemId) setEditingId(null);
+      setFeedback("Item excluído com sucesso.");
+    } catch (reason) {
+      setError(reason.message);
+    } finally {
+      setDeletingId(null);
     }
-    setFeedback("Item excluído com sucesso.");
   }
 
   function handleCancel() {
@@ -81,7 +128,7 @@ export default function App() {
             </div>
           </div>
           <span className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold tracking-[0.12em] text-sky-200 uppercase">
-            Prática 06 · Frontend
+            Prática 07 · Integração
           </span>
         </div>
         <div className="mx-auto max-w-7xl px-5 pt-9 pb-16 sm:px-8 sm:pt-12 sm:pb-20">
@@ -94,8 +141,8 @@ export default function App() {
             <span className="text-sky-400">Um item de cada vez.</span>
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
-            Crie, edite e encontre seus itens em uma interface simples. Tudo acontece localmente
-            nesta sessão, sem conexão com o backend.
+            Crie, edite e encontre seus itens. Agora eles são armazenados no PostgreSQL por meio da
+            API FastAPI.
           </p>
         </div>
       </header>
@@ -111,6 +158,23 @@ export default function App() {
           <output className="mt-5 block rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
             {feedback}
           </output>
+        )}
+        {error && (
+          <div
+            role="alert"
+            className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
+          >
+            <p>{error}</p>
+            {loadError && (
+              <button
+                type="button"
+                onClick={() => setReloadVersion((n) => n + 1)}
+                className="mt-2 text-sm font-semibold underline"
+              >
+                Tentar novamente
+              </button>
+            )}
+          </div>
         )}
 
         <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(280px,390px)_minmax(0,1fr)]">
@@ -141,6 +205,7 @@ export default function App() {
               isEditing={Boolean(editingItem)}
               onSave={handleSave}
               onCancel={handleCancel}
+              isSubmitting={saving || loading}
             />
           </section>
 
@@ -172,18 +237,28 @@ export default function App() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-100"
               />
             </div>
-            <ItemList
-              items={visibleItems}
-              totalItems={items.length}
-              query={query}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+            {loading ? (
+              <output className="block py-12 text-center text-sm text-slate-500">
+                Carregando itens...
+              </output>
+            ) : loadError && items.length === 0 ? (
+              <p className="py-12 text-center text-sm text-slate-500">
+                Não foi possível carregar a lista.
+              </p>
+            ) : (
+              <ItemList
+                items={visibleItems}
+                totalItems={items.length}
+                query={query}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                deletingId={deletingId}
+              />
+            )}
           </section>
         </div>
         <footer className="pt-8 text-center text-xs leading-6 text-slate-500">
-          C216 · Prática 6 · React, Tailwind CSS, Biome, Vitest e Playwright · Sem persistência de
-          dados
+          C216 · Prática 7 · React, FastAPI, PostgreSQL e testes automatizados · Dados persistidos
         </footer>
       </main>
     </div>

@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text
+from sqlalchemy import Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -7,17 +7,10 @@ from app.database.base import Base
 class Item(Base):
     __tablename__ = "items"
 
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    name: Mapped[str] = mapped_column(
-        String(150),
-        nullable=False,
-    )
 
-    description: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
+# A restrição pertence ao banco: duas requisições simultâneas não criam duplicatas.
+Index("uq_items_name_normalized", func.lower(func.trim(Item.name)), unique=True)

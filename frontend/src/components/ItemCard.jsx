@@ -1,4 +1,4 @@
-export default function ItemCard({ item, onEdit, onDelete }) {
+export default function ItemCard({ item, onEdit, onDelete, isDeleting = false }) {
   return (
     <article
       aria-label={`Item: ${item.name}`}
@@ -30,10 +30,11 @@ export default function ItemCard({ item, onEdit, onDelete }) {
         <button
           type="button"
           onClick={() => onDelete(item.id)}
+          disabled={isDeleting}
           className="rounded-lg bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
           aria-label={`Excluir ${item.name}`}
         >
-          Excluir
+          {isDeleting ? "Excluindo..." : "Excluir"}
         </button>
       </div>
     </article>

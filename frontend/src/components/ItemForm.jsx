@@ -8,9 +8,17 @@ import {
 
 const emptyValues = { name: "", description: "" };
 
-export default function ItemForm({ initialValues = emptyValues, onSave, onCancel, isEditing }) {
+export default function ItemForm({
+  initialValues = emptyValues,
+  onSave,
+  onCancel,
+  isEditing,
+  isSubmitting = false,
+}) {
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState({});
+  let submitText = isEditing ? "Salvar alterações" : "Adicionar item";
+  if (isSubmitting) submitText = "Aguarde...";
   const nameId = useId();
   const nameErrorId = useId();
   const nameHelpId = useId();
@@ -23,7 +31,7 @@ export default function ItemForm({ initialValues = emptyValues, onSave, onCancel
     setErrors((current) => ({ ...current, [name]: undefined }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const validationErrors = validateItem(values);
     setErrors(validationErrors);
@@ -32,8 +40,8 @@ export default function ItemForm({ initialValues = emptyValues, onSave, onCancel
       return;
     }
 
-    onSave(normalizeItem(values));
-    if (!isEditing) {
+    const saved = await onSave(normalizeItem(values));
+    if (saved && !isEditing) {
       setValues(emptyValues);
     }
   }
@@ -73,7 +81,7 @@ export default function ItemForm({ initialValues = emptyValues, onSave, onCancel
             Descrição <span className="font-normal text-slate-400">(opcional)</span>
           </label>
           <span className="text-xs text-slate-400">
-            {values.description.length}/{MAX_DESCRIPTION_LENGTH}
+            {(values.description ?? "").length}/{MAX_DESCRIPTION_LENGTH}
           </span>
         </div>
         <textarea
@@ -101,9 +109,10 @@ export default function ItemForm({ initialValues = emptyValues, onSave, onCancel
       <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="submit"
+          disabled={isSubmitting}
           className="flex-1 rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-sky-200 transition hover:bg-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
         >
-          {isEditing ? "Salvar alterações" : "Adicionar item"}
+          {submitText}
         </button>
         {isEditing && (
           <button

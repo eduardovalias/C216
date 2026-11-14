@@ -6,7 +6,7 @@ on:
 
 jobs:
   frontend:
-    name: Lint, format, unit, integration, build and E2E
+    name: Frontend lint, tests and integrated E2E
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,11 +37,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Integrated E2E (FastAPI, PostgreSQL, React)
+        working-directory: .
+        run: make e2e
 
-      - name: Run E2E tests
-        run: npm run test:e2e
+      - name: Show Docker logs on failure
+        if: failure()
+        working-directory: .
+        run: docker compose --profile e2e logs --no-color
 
       - name: Upload Playwright evidence on failure
         if: failure()
@@ -50,3 +53,8 @@ jobs:
           name: playwright-results
           path: frontend/test-results/
           if-no-files-found: ignore
+
+      - name: Stop test containers
+        if: always()
+        working-directory: .
+        run: docker compose --profile e2e down -v --remove-orphans

@@ -1,34 +1,41 @@
-# C216 — Prática 6: Gerenciador de Itens
+# C216 — Prática 7: Frontend integrado
 
-Frontend desenvolvido com React, Vite, Tailwind CSS e JavaScript.
+React, Tailwind CSS, Vite, Biome, Vitest e Playwright.
 
-## Requisitos
+O gerenciador de itens chama o FastAPI por meio de `src/services/items.js` e
+armazena dados no PostgreSQL. Nomes repetidos retornam HTTP 409; a aplicação
+mostra erros de rede, carregamento e erro da API.
 
-Node.js 22 (ou >= 20.19) e npm. O backend **não é necessário** para esta prática.
+## Aplicação completa
 
-## Instalação inicial
-
-```bash
-cd frontend
-npm install
-npx playwright install chromium
-```
-
-O primeiro `npm install` gera o `package-lock.json`. **Inclua esse arquivo no Git** antes de abrir o PR, pois a entrega e o CI devem usar `npm ci`.
-
-## Executar
+Na raiz do repositório:
 
 ```bash
-npm run dev
+make up-build
+make ps
+make db-upgrade
+make db-current
 ```
 
-Acesse a URL informada no terminal (normalmente `http://localhost:5173`).
+Abra `http://localhost:5173`; a API fica em `http://localhost:8000/docs`.
 
-## Validar
+## Verificação
+
+Na raiz do projeto:
+
+```bash
+make test
+make frontend-test
+make frontend-check
+make frontend-build
+make e2e
+make check-all
+```
+
+Ou, dentro de `frontend`, com o Compose rodando:
 
 ```bash
 npm ci
-npm run format
 npm run lint
 npm run format:check
 npm run test
@@ -36,22 +43,12 @@ npm run build
 npm run test:e2e
 ```
 
-Depois da primeira formatação, verifique as alterações e inclua-as no commit. Nos testes de aceitação subsequentes, `npm run format` não precisa ser repetido; use apenas `format:check`.
+`npm run test` usa `fetch` mockado (testes de unidade e integração).
+`npm run test:e2e` usa a API e PostgreSQL reais e exige que os containers estejam ativos.
+`make e2e` prepara os serviços automaticamente e remove o container de teste.
 
-Também é possível executar todos os checks da raiz do repositório:
+## API
 
-```bash
-make check-all
-```
-
-## Responsabilidades
-
-- `src/App.jsx`: estado local, CRUD, busca e composição da interface.
-- `src/components/`: formulário e componentes de listagem.
-- `src/utils/items.js`: validação, normalização e filtro (funções puras).
-- `tests/unit/`: regras de validação e busca (Vitest).
-- `tests/integration/`: interação de componentes no navegador simulado (React Testing Library).
-- `tests/e2e/`: fluxo real no Chromium (Playwright).
-- `.github/workflows/ci-frontend.yml`: pipeline completo para push e PR.
-
-Os itens não são enviados à API, ao PostgreSQL ou a qualquer serviço externo. Não utilizamos `fetch`, `localStorage` nem outros mecanismos de persistência. Recarregar a página reinicia os itens.
+`src/services/items.js` implementa GET, POST, PUT, PATCH e DELETE com `fetch`.
+O endereço padrão é `http://localhost:8000` no navegador local e
+`http://api:8000` no navegador do Compose. É possível sobrescrever com `VITE_API_URL`.
