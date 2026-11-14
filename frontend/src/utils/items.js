@@ -34,6 +34,6 @@ export function filterItems(items, query) {
   }
 
   return items.filter((item) =>
-    `${item.name} ${item.description}`.toLocaleLowerCase("pt-BR").includes(term),
+    `${item.name} ${item.description ?? ""}`.toLocaleLowerCase("pt-BR").includes(term),
   );
 }

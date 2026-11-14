@@ -1,88 +1,143 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App.jsx";
 
-async function createItem(user, name, description = "") {
-  await user.type(screen.getByLabelText(/nome do item/i), name);
-  if (description) {
-    await user.type(screen.getByLabelText(/descrição/i), description);
-  }
-  await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+const response = (status, data) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => data,
+});
+
+let records;
+let nextId;
+let fetchMock;
+
+beforeEach(() => {
+  records = [];
+  nextId = 1;
+  fetchMock = vi.fn(async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    const method = options.method || "GET";
+    if (path === "/items/" && method === "GET") return response(200, [...records]);
+    if (path === "/items/" && method === "POST") {
+      const values = JSON.parse(options.body);
+      if (records.some((item) => item.name.toLowerCase() === values.name.toLowerCase())) {
+        return response(409, { detail: "Já existe um item com esse nome." });
+      }
+      const created = { id: nextId++, ...values };
+      records.push(created);
+      return response(201, created);
+    }
+    const id = Number(path.split("/").at(-1));
+    if (method === "PATCH") {
+      const original = records.find((item) => item.id === id);
+      Object.assign(original, JSON.parse(options.body));
+      return response(200, { ...original });
+    }
+    if (method === "DELETE") {
+      records = records.filter((item) => item.id !== id);
+      return response(200, { message: "Item deleted" });
+    }
+    return response(404, { detail: "Item not found" });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+async function ready() {
+  await waitFor(() => expect(screen.getByRole("button", { name: "Adicionar item" })).toBeEnabled());
 }
 
-describe("Gerenciador de itens (integração)", () => {
-  it("exibe uma lista vazia antes do primeiro cadastro", () => {
+async function submitItem(user, name, description = "") {
+  await user.type(screen.getByLabelText(/nome do item/i), name);
+  if (description) await user.type(screen.getByLabelText(/descrição/i), description);
+  await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+  await screen.findByRole("article", { name: `Item: ${name}` });
+}
+
+describe("Gerenciador integrado com fetch mockado", () => {
+  it("mostra carregamento até a API responder", async () => {
+    let resolveRequest;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
     render(<App />);
-    expect(screen.getByText("Nenhum item cadastrado")).toBeInTheDocument();
+    expect(screen.getByText("Carregando itens...")).toBeInTheDocument();
+    resolveRequest(response(200, []));
+    await screen.findByText("Nenhum item cadastrado");
   });
 
-  it("adiciona um item válido e mostra a descrição", async () => {
+  it("lista os itens recebidos da API", async () => {
+    records.push({ id: 10, name: "Agenda", description: null });
+    render(<App />);
+    expect(await screen.findByRole("article", { name: "Item: Agenda" })).toBeInTheDocument();
+  });
+
+  it("cadastra, edita e exclui via requisições HTTP", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await createItem(user, "Caderno", "Capa azul");
-
-    expect(screen.getByRole("article", { name: "Item: Caderno" })).toBeInTheDocument();
+    await ready();
+    await submitItem(user, "Caderno", "Capa azul");
     expect(screen.getByText("Capa azul")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Item criado com sucesso.");
-  });
-
-  it("não cadastra um nome inválido", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(screen.getByRole("button", { name: "Adicionar item" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("pelo menos 2 caracteres");
-    expect(screen.getByText("Nenhum item cadastrado")).toBeInTheDocument();
-  });
-
-  it("edita um item sem criar outro registro", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await createItem(user, "Caderno", "Azul");
 
     await user.click(screen.getByRole("button", { name: "Editar Caderno" }));
-    const nameInput = screen.getByLabelText(/nome do item/i);
-    await user.clear(nameInput);
-    await user.type(nameInput, "Caderno atualizado");
+    await user.clear(screen.getByLabelText(/nome do item/i));
+    await user.type(screen.getByLabelText(/nome do item/i), "Caderno novo");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
-
-    expect(screen.getByRole("article", { name: "Item: Caderno atualizado" })).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(1);
-    expect(screen.getByText("Azul")).toBeInTheDocument();
+    const card = await screen.findByRole("article", { name: "Item: Caderno novo" });
+    await user.click(within(card).getByRole("button", { name: "Excluir Caderno novo" }));
+    await screen.findByText("Nenhum item cadastrado");
+    expect(fetchMock.mock.calls.map(([, opts]) => opts?.method || "GET")).toEqual([
+      "GET",
+      "POST",
+      "PATCH",
+      "DELETE",
+    ]);
   });
 
-  it("cancela a edição sem modificar os dados", async () => {
+  it("filtra registros retornados pelo backend", async () => {
     const user = userEvent.setup();
+    records.push({ id: 1, name: "Mouse", description: "Sem fio" });
+    records.push({ id: 2, name: "Teclado", description: null });
     render(<App />);
-    await createItem(user, "Mouse");
-    await user.click(screen.getByRole("button", { name: "Editar Mouse" }));
-    await user.click(screen.getByRole("button", { name: "Cancelar" }));
-
-    expect(screen.getByRole("article", { name: "Item: Mouse" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Adicionar item" })).toBeInTheDocument();
-  });
-
-  it("exclui um item da lista", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await createItem(user, "Teclado");
-
-    const card = screen.getByRole("article", { name: "Item: Teclado" });
-    await user.click(within(card).getByRole("button", { name: "Excluir Teclado" }));
-
-    expect(screen.queryByRole("article", { name: "Item: Teclado" })).not.toBeInTheDocument();
-    expect(screen.getByText("Nenhum item cadastrado")).toBeInTheDocument();
-  });
-
-  it("filtra itens cadastrados pelo texto da busca", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await createItem(user, "Caderno");
-    await createItem(user, "Mouse");
+    await screen.findByRole("article", { name: "Item: Mouse" });
     await user.type(screen.getByRole("searchbox", { name: "Buscar itens" }), "mouse");
+    expect(screen.queryByRole("article", { name: "Item: Teclado" })).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByRole("article", { name: "Item: Mouse" })).toBeInTheDocument();
-    expect(screen.queryByRole("article", { name: "Item: Caderno" })).not.toBeInTheDocument();
+  it("mostra nome duplicado sem limpar o formulário", async () => {
+    const user = userEvent.setup();
+    records.push({ id: 1, name: "Mouse", description: "" });
+    render(<App />);
+    await ready();
+    await user.type(screen.getByLabelText(/nome do item/i), "Mouse");
+    await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Já existe um item com esse nome.");
+    expect(screen.getByLabelText(/nome do item/i)).toHaveValue("Mouse");
+  });
+
+  it("exibe erro de rede e permite tentar carregar novamente", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Network error"));
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível conectar à API");
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await screen.findByText("Nenhum item cadastrado");
+  });
+
+  it("rejeita formulário inválido sem chamar POST", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Adicionar item" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("pelo menos 2 caracteres");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

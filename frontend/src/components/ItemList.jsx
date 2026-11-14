@@ -1,6 +1,6 @@
 import ItemCard from "./ItemCard.jsx";
 
-export default function ItemList({ items, totalItems, query, onEdit, onDelete }) {
+export default function ItemList({ items, totalItems, query, onEdit, onDelete, deletingId }) {
   if (totalItems === 0) {
     return (
       <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 px-6 text-center">
@@ -33,7 +33,12 @@ export default function ItemList({ items, totalItems, query, onEdit, onDelete })
     <ul className="grid gap-4 sm:grid-cols-2" aria-label="Lista de itens">
       {items.map((item) => (
         <li key={item.id}>
-          <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} />
+          <ItemCard
+            item={item}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isDeleting={deletingId === item.id}
+          />
         </li>
       ))}
     </ul>
