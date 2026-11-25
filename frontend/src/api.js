@@ -10,5 +10,8 @@ export const api = {
   createMovie: (data) => request("/movies", {method:"POST",body:JSON.stringify(data)}),
   updateMovie: (id,data) => request(`/movies/${id}`, {method:"PUT",body:JSON.stringify(data)}),
   deleteMovie: (id) => request(`/movies/${id}`, {method:"DELETE"}),
+  rate: (id,score) => request(`/movies/${id}/rating`, {method:"PUT",body:JSON.stringify({score})}),
+  removeRating: (id) => request(`/movies/${id}/rating`, {method:"DELETE"}),
+  watchlist: (id,watchlisted) => request(`/movies/${id}/watchlist`, {method:"PATCH",body:JSON.stringify({watchlisted})}),
 };
 
