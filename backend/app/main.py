@@ -6,21 +6,26 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import engine
-from app.routes import movies, ratings, insights
+from app.routes import insights, movies, ratings
 
-app = FastAPI(title="CineMatch API", version="0.1.0")
-origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if s.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type"])
+app = FastAPI(title="CineMatch API", version="1.0.0")
+origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
+app.include_router(movies.router)
+app.include_router(ratings.router)
+app.include_router(insights.router)
 
-@app.get("/api/health")
+
+@app.get("/api/health", tags=["Sistema"])
 def health():
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
     except SQLAlchemyError:
-        raise HTTPException(503, "Banco indisponível") from None
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível.") from None
     return {"status": "ok"}
-
-app.include_router(movies.router)
-app.include_router(ratings.router)
-app.include_router(insights.router)
