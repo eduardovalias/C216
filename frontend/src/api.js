@@ -7,6 +7,7 @@ async function request(url,options={}) {
 }
 export const api = {
   movies: () => request("/movies"),
+  recommendations: () => request("/recommendations"),
   createMovie: (data) => request("/movies", {method:"POST",body:JSON.stringify(data)}),
   updateMovie: (id,data) => request(`/movies/${id}`, {method:"PUT",body:JSON.stringify(data)}),
   deleteMovie: (id) => request(`/movies/${id}`, {method:"DELETE"}),

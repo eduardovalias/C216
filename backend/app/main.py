@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import engine
-from app.routes import movies, ratings
+from app.routes import movies, ratings, insights
 
 app = FastAPI(title="CineMatch API", version="0.1.0")
 origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if s.strip()]
@@ -23,3 +23,4 @@ def health():
 
 app.include_router(movies.router)
 app.include_router(ratings.router)
+app.include_router(insights.router)
