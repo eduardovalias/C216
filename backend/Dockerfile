@@ -7,4 +7,5 @@ RUN poetry config virtualenvs.create false && poetry install --no-root
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
+COPY tests ./tests
 EXPOSE 8000

@@ -13,3 +13,5 @@ db-current:
 	$(DC) exec -T api alembic current
 seed:
 	$(DC) exec -T api python -m app.seed
+test:
+	$(DC) exec -T api python -m pytest -q
