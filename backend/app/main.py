@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import engine
+from app.routes import movies
 
 app = FastAPI(title="CineMatch API", version="0.1.0")
 origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if s.strip()]
@@ -19,3 +20,5 @@ def health():
     except SQLAlchemyError:
         raise HTTPException(503, "Banco indisponível") from None
     return {"status": "ok"}
+
+app.include_router(movies.router)
