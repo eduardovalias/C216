@@ -1,0 +1,17 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+  "root": true,
+  "files": {
+    "includes": ["**", "!!dist", "!!node_modules", "!!playwright-report", "!!test-results"]
+  },
+  "formatter": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": { "noUnusedVariables": "error" },
+      "suspicious": { "noDuplicateObjectKeys": "error" }
+    }
+  },
+  "assist": { "enabled": false }
+}

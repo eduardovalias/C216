@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "cinematch-backend"
+version = "1.0.0"
+description = "API do projeto final C216 CineMatch"
+authors = ["Projeto C216"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = "^0.34.0"
+sqlalchemy = "^2.0.36"
+alembic = "^1.14.0"
+psycopg = {version = "^3.2.0", extras = ["binary"]}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+httpx = "^0.28.0"
+ruff = "^0.9.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
