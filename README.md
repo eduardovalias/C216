@@ -316,3 +316,7 @@ make reset-demo     # Apagar o volume local e recriar o catálogo demonstrativo
 ```
 
 **Atenção:** `make reset-demo` executa `docker compose down -v`, excluindo o volume do banco de dados desta instalação. Filmes cadastrados, avaliações e lista de interesse existentes nesse banco são perdidos. Use esse comando apenas quando desejar reiniciar os dados demonstrativos.
+
+## Vídeo demonstrativo
+
+[Assista à demonstração do CineMatch](https://posinatel-my.sharepoint.com/:v:/r/personal/eduardo_valias_gec_inatel_br/_layouts/15/stream.aspx?id=%2Fpersonal%2Feduardo_valias_gec_inatel_br%2FDocuments%2FProjetoFinalC216.mp4&share=cQqzVxpvzJubSZt6RhOMPO0HEgUDZQWEr0z1DcurNqknvmWiHw&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0)
