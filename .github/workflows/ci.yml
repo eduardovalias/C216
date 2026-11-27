@@ -1,0 +1,63 @@
+name: CineMatch - CI
+on:
+  push:
+    branches: [projeto-final]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: API - Pytest e Ruff
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar Poetry
+        run: pip install poetry==2.2.1
+      - name: Instalar dependências
+        run: poetry install --no-root
+      - name: Testar backend
+        run: poetry run python -m pytest -q
+      - name: Lint backend
+        run: poetry run ruff check .
+
+  frontend:
+    name: React - Vitest, Biome, Build e E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependências
+        run: cd frontend && npm install
+      - name: Checagem estática com Biome
+        run: cd frontend && npx biome check .
+      - name: Testar frontend
+        run: cd frontend && npm run test -- --run
+      - name: Build frontend
+        run: cd frontend && npm run build
+      - name: Iniciar API, banco e interface
+        run: docker compose up -d --build --wait
+      - name: Instalar navegador
+        run: cd frontend && npx playwright install --with-deps chromium
+      - name: Executar Playwright integrado
+        run: cd frontend && npm run test:e2e
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Upload evidências em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+      - name: Encerrar contêineres
+        if: always()
+        run: docker compose down -v
